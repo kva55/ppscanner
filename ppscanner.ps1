@@ -1,11 +1,10 @@
 Set-ExecutionPolicy Unrestricted -Scope Process
 
 
-# Set list of targets"
 $targetList = @(
-    "192.168.1.1",
-    "192.168.2.2",
-    "192.168.3.3"
+    "192.168.1.1"
+    #"192.168.2.2",
+    #"192.168.3.3"
 )
 
 # Set of common ports
@@ -30,7 +29,7 @@ $common = @(
 )
 
 $sample= @(
-	135, 3389, 2179, 445, 139
+	22, 25, 9929, 31337
 )
 
 $allports = 1..65535
@@ -41,6 +40,8 @@ $allports = 1..65535
 $ipPortDict = @{}
 
 $suppressClosedPorts = "true"
+$global_timeoutSec = 15 # set timeout
+$global_fastTimeout = 5 # If unable to connect faster than other requests - filtered
 
 Function smtp_portscan
 {
@@ -55,6 +56,7 @@ Function smtp_portscan
     
     try
     {
+        $start = Get-Date # start recording request time
 	    $resp = Send-MailMessage -To "recipient@example.com" -From "sender@example.com" -Subject "subject" -Body "body" -SmtpServer $target -Port $port -Verbose -ErrorAction Stop   
     }
     catch
@@ -74,7 +76,19 @@ Function smtp_portscan
         Write-Output "[MAIL] $t - Open|filtered"
         $ipPortDict[$target] += @($port)
     }
+    $end1 = Get-Date
+    $elapsed1 = $end1 - $start # get elapsed time
+    if($resp -like "Unable to connect to the remote server" -and $elapsed1 -gt $global_timeoutSec)
+    {
+        Write-Output "[MAIL] $t - Open|filtered"
+        $ipPortDict[$target] += @($port)
+    }
     if($resp -like "Unable to read data from the transport connection: An existing connection was forcibly closed by the remote host.")
+    {
+        Write-Output "[MAIL] $t - open"
+        $ipPortDict[$target] += @($port)
+    }
+    if($resp -like "Unable to read data from the transport connection: net_io_connectionclosed.")
     {
         Write-Output "[MAIL] $t - open"
         $ipPortDict[$target] += @($port)
@@ -83,6 +97,7 @@ Function smtp_portscan
 
 Function http_portscan
 {
+    
 	Param
     (
          [Parameter(Mandatory=$true, Position=0)]
@@ -94,7 +109,8 @@ Function http_portscan
     
     try
     {
-	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec 30  
+        $start = Get-Date
+	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec $global_timeoutSec 
     }
     catch
     {
@@ -108,7 +124,10 @@ Function http_portscan
     {
         Write-Output "[HTTP] $t - closed"
     }
-    if($resp -like "The operation has timed out.")
+    $end1 = Get-Date
+    $elapsed1 = $end1 - $start
+    #Write-Output $elapsed1 #uncomment for debugging
+    if($resp -like "The operation has timed out." -and $elapsed1 -ge $global_timeoutSec)
     {
         Write-Output "[HTTP] $t - open|filtered"
         $ipPortDict[$target] += @($port)
@@ -119,6 +138,21 @@ Function http_portscan
         $ipPortDict[$target] += @($port)
     }
     if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive.")
+    {
+        Write-Output "[HTTP] $t - open"
+        $ipPortDict[$target] += @($port)
+    }
+    if($resp -like "The underlying connection was closed: An unexpected error occurred on a send.")
+    {
+        Write-Output "[HTTP] $t - open"
+        $ipPortDict[$target] += @($port)
+    }
+    if($resp -like "The underlying connection was closed: The connection was closed unexpectedly.")
+    {
+        Write-Output "[HTTP] $t - open"
+        $ipPortDict[$target] += @($port)
+    }
+    if($resp -like "The underlying connection was closed: Could not establish trust relationship for the SSL/TLS secure channel.")
     {
         Write-Output "[HTTP] $t - open"
         $ipPortDict[$target] += @($port)
@@ -139,6 +173,7 @@ Function wsman_portscan
     
     try
     {
+        #$start = Get-Date # start timing requests
 	    $resp = Test-WSMan -ComputerName $target -Port $port -Verbose -UseSSL -ErrorAction Stop
     }
     catch
@@ -149,9 +184,10 @@ Function wsman_portscan
     # enable for debugging
     #Write-Output $resp
     
-    if($resp -like "*2150859046*" -and $suppressClosedPorts -eq "false")
+    if($resp -like "*2150859046*")
     {
-        Write-Output "[WSMAN] $t - closed"
+        Write-Output "[WSMAN] $t - open"
+        $ipPortDict[$target] += @($port)
     }
     if($resp -like "*12175*")
     {
@@ -203,9 +239,9 @@ foreach ($port in $common)
 }
 
 
-Write-Output "PowerScan - Port Scanner"
+Write-Output "ppscanner - PowerShell Port Scanner"
 Write-Output "Author: Elysee Franchuk (kva55)"
-Write-Output "PowerScan - Port Scanner"
+Write-Output "github: https://github.com/kva55/ppscanner"
 foreach ($target in $targetList)
 {
     Write-Output ""
@@ -214,9 +250,11 @@ foreach ($target in $targetList)
     foreach ($port in $sample)
     {
 
-        $c = Get-Random -Minimum 1 -Maximum 4
-	
-        #$t = $target + ":" + $port
+        $c = Get-Random -Minimum 1 -Maximum 4 # random function each time
+	#$c = 3 # for full wsman scan
+        #$c = 2 # for full http scan
+        #$c = 1 # for full smtp scan
+        
 	    #Write-Output  $t
 	    if($c -eq 1)
         {
