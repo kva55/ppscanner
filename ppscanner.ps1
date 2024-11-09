@@ -13,8 +13,8 @@ $common = @(
 	25,53,69,80,88,
 	102,110,135,137,
 	138,139,143,381,
-	383,443,445,464,
-	587,593,636,691,
+	383,443,445,464,2869
+	587,593,636,691,5357,
 	902,989,995,1025,3389,
 	1194,1337,1433,2179,
 	4022,1434,1589,1725,
@@ -29,7 +29,7 @@ $common = @(
 )
 
 $sample= @(
-	22, 25, 9929, 31337
+	135
 )
 
 $allports = 1..65535
@@ -40,7 +40,9 @@ $allports = 1..65535
 $ipPortDict = @{}
 
 $suppressClosedPorts = "true"
-$global_timeoutSec = 15 # set timeout
+#$global_timeoutSec = 15 # set timeout
+$global_timeoutSec_ = 30
+$global_timeoutSec = New-TimeSpan -Seconds $global_timeoutSec_
 $global_fastTimeout = 5 # If unable to connect faster than other requests - filtered
 
 Function smtp_portscan
@@ -67,18 +69,19 @@ Function smtp_portscan
     # enable for debugging
     #Write-Output $resp
     
-    if($resp -like "Unable to connect to the remote server" -and $suppressClosedPorts -eq "false")
-    {
-        Write-Output "[MAIL] $t - closed"
-    }
-    if($resp -like "The operation has timed out.")
+    $end1 = Get-Date
+    $elapsed1 = $end1 - $start # get elapsed time
+    #Write-Output $elapsed1
+    if($resp -like "Unable to connect to the remote server" -and $elapsed1 -gt $global_timeoutSec)
     {
         Write-Output "[MAIL] $t - Open|filtered"
         $ipPortDict[$target] += @($port)
     }
-    $end1 = Get-Date
-    $elapsed1 = $end1 - $start # get elapsed time
-    if($resp -like "Unable to connect to the remote server" -and $elapsed1 -gt $global_timeoutSec)
+    if($resp -like "Unable to connect to the remote server" -and $elapsed1 -lt $global_timeoutSec -and $suppressClosedPorts -eq "false")
+    {
+        Write-Output "[MAIL] $t - closed"
+    }
+    if($resp -like "The operation has timed out.")
     {
         Write-Output "[MAIL] $t - Open|filtered"
         $ipPortDict[$target] += @($port)
@@ -110,11 +113,12 @@ Function http_portscan
     try
     {
         $start = Get-Date
-	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec $global_timeoutSec 
+	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec $global_timeoutSec_
     }
     catch
     {
         $resp = $_.Exception.Message
+        #Write-Output $resp
     }
 
     # enable for debugging
@@ -157,6 +161,11 @@ Function http_portscan
         Write-Output "[HTTP] $t - open"
         $ipPortDict[$target] += @($port)
     }
+    if($resp -like "The server committed a protocol violation. Section=ResponseStatusLine")
+    {
+        Write-Output "[HTTP] $t - open"
+        $ipPortDict[$target] += @($port)
+    }
 }
 
 # WSMAN can differentiate some ports, but might miss some.
@@ -184,10 +193,10 @@ Function wsman_portscan
     # enable for debugging
     #Write-Output $resp
     
-    if($resp -like "*2150859046*")
+    if($resp -like "*2150859046*" -and $suppressClosedPorts -eq "false")
     {
-        Write-Output "[WSMAN] $t - open"
-        $ipPortDict[$target] += @($port)
+        Write-Output "[WSMAN] $t - Unknown (code: 2150859046)"
+        #$ipPortDict[$target] += @($port)
     }
     if($resp -like "*12175*")
     {
@@ -247,12 +256,12 @@ foreach ($target in $targetList)
     Write-Output ""
     Write-Output "Starting Portscan on $target"
     
-    foreach ($port in $sample)
+    foreach ($port in $common)
     {
 
         $c = Get-Random -Minimum 1 -Maximum 4 # random function each time
-	#$c = 3 # for full wsman scan
-        #$c = 2 # for full http scan
+	    #$c = 3 # for full wsman scan
+        $c = 2 # for full http scan
         #$c = 1 # for full smtp scan
         
 	    #Write-Output  $t
@@ -275,5 +284,5 @@ foreach ($target in $targetList)
 }
 
 # Display all found ports and ip pairs
-$ipPortDict
+$ipPortDict.GetEnumerator() | Out-String
 
