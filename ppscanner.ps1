@@ -1,11 +1,11 @@
 Set-ExecutionPolicy Unrestricted -Scope Process
 
 
-#$target = "192.168.100.2"
+# Set list of targets"
 $targetList = @(
-    "192.168.100.2",
-    "192.168.0.200",
-    "192.168.0.33"
+    "192.168.1.1",
+    "192.168.2.2",
+    "192.168.3.3"
 )
 
 # Set of common ports
