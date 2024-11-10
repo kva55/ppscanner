@@ -1,5 +1,5 @@
 ## Notes about functions
-- wsman: fastest option, but doesn't detect standard ports such as 21, 25, 110, 143, etc.
+- wsman: fastest option, but doesn't detect standard ports such as 21, 25, 110, 143, etc. Also misses ports like 80 and 135.
 - http: most accurate but timeout needs to be set to acceptable value (default 30 seconds, otherwise hangs)
 - rest: Similar to http but different function
 - mail: slowest option, not as verbose as http but detects ports
