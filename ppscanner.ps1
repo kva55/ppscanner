@@ -26,12 +26,16 @@ $common = @(
 	6999,6970,8080,8081,
 	8082,8087,8222,9100,
 	10000,12345,27374,31337,
-    	2052,2053,2082,2083,2086,8443,8880
+    2052,2053,2082,2083,2086,8443,8880
 )
 
 # Common cloudflare ports
-$sample= @(
+$cfports= @(
 	2052,2082,2086,8880,8080,8443
+)
+
+$sample= @(
+	80
 )
 
 $allports = 1..65535
@@ -41,14 +45,14 @@ $allports = 1..65535
 # Store ips and ports
 $ipPortDict = @{}
 
-$suppressClosedPorts = "false"
+$suppressClosedPorts = "true"
 
 # global timeout, if longer than 45 seconds to respond, likely filtered
 $global_timeoutSec = New-TimeSpan -Seconds 45
 
 # global slow response - if responds after 15 seconds likely filtered
 $global_slowtimeout = New-TimeSpan -Seconds 15
-$slow_infer = "true"
+$slow_infer = "true" #turning this off might reduce FPs
 
 # global fast response, if responds within 1 second likely filtered or up
 $global_fastTimeout = New-TimeSpan -Second 1 # If unable to connect faster than other requests - filtered
@@ -123,6 +127,7 @@ Function http_portscan
     {
         $start = Get-Date
 	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec $global_timeoutSec_
+        #Write-Output $resp
     }
     catch
     {
@@ -156,6 +161,12 @@ Function http_portscan
              Write-Output "[HTTP] $t - open|filtered"
             $ipPortDict[$target] += @($port)
         }
+    }
+
+    if($resp.StatusCode)
+    {
+        Write-Output "[HTTP] $t - open"
+        $ipPortDict[$target] += @($port)
     }
 
     if($resp -like "Unable to connect to the remote server" -and $suppressClosedPorts -eq "false")
@@ -311,13 +322,13 @@ foreach ($target in $targetList)
     Write-Output ""
     Write-Output "Starting Portscan on $target"
     
-    foreach ($port in $sample)
+    foreach ($port in $common)
     {
 
         $c = Get-Random -Minimum 1 -Maximum 4 # random function each time
 	    #$c = 3 # for full wsman scan
-        #$c = 2 # for full http scan
-        $c = 1 # for full smtp scan
+        $c = 2 # for full http scan
+        #$c = 1 # for full smtp scan
         
 	    #Write-Output  $t
 	    if($c -eq 1)
