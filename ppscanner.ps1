@@ -34,19 +34,20 @@ $common = @(
 	102,110,135,137,
 	138,139,143,381,465,
 	383,443,445,464,2869,
-	587,593,636,691,5357,5040,
-	902,912,989,995,1025,3389,
-	1194,1337,1433,2179,
-	4022,1434,1589,1725,
-	1900,5353,5780,3702,
-	2083,2483,2484,2967,
-	3074,3306,3724,4664,
-	5432,5900,6665,6666,
-	6667,6668,6669,6881,
-	6999,6970,8080,8081,
-	8082,8087,8222,9100,
-	10000,12345,27374,31337,
-    2052,2053,2082,2083,2086,8443,8880
+	587,593,636,691,5357,
+    5040,902,912,989,995,
+    1025,3389,1194,1337,
+    1433,2179,4022,1434,
+    1589,1725,1900,5353,
+    5780,3702,2083,2483,
+    2484,2967,3074,3306,
+    3724,46645432,5900,
+    6665,6666,6667,6668,
+    6669,6881,6999,6970,
+    8080,8081,8082,8087,
+    8222,9100,10000,12345,
+    27374,31337,2052,2053,
+    2082,2083,2086,8443,8880
 )
 
 # Common cloudflare ports
@@ -55,7 +56,7 @@ $cfports= @(
 )
 
 $sample= @(
-	80
+	139, 445, 5357, 902, 912, 443,22
 )
 
 $allports = 1..65535
@@ -314,11 +315,11 @@ foreach ($target in $targetList)
     Write-Output ""
     Write-Output "Starting Portscan on $target"
     
-    foreach ($port in $common)
+    foreach ($port in $sample)
     {
 
         $c = Get-Random -Minimum 1 -Maximum 4 # random function each time
-	    $c = 3 # for full wsman scan
+	    #$c = 3 # for full wsman scan
         #$c = 2 # for full http scan
         #$c = 1 # for full smtp scan
         
@@ -342,5 +343,10 @@ foreach ($target in $targetList)
 }
 
 # Display all found ports and ip pairs
-$ipPortDict.GetEnumerator() | Format-Table
-
+#$ipPortDict.GetEnumerator() | Out-String -Width 1000
+Write-Output ""
+Write-Output "Results below:"
+foreach ($entry in $ipPortDict.GetEnumerator()) 
+{
+    Write-Output "$($entry.Key) : $($entry.Value -join ', ')"
+}
