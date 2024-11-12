@@ -1,11 +1,31 @@
 Set-ExecutionPolicy Unrestricted -Scope Process
 
+Write-Output "ppscanner - PowerShell Port Scanner"
+Write-Output "Author: Elysee Franchuk (kva55)"
+Write-Output "github: https://github.com/kva55/ppscanner"
+Write-Output ""
 
-$targetList = @(
-    "192.168.1.1"
+# Enter ip in arg ppscanner.ps1 192.168.1.1
+if ($args[0] -ne $null -and $args[0] -ne "") 
+{ 
+    $targetList = $args[0]
+    $targetList = $targetList -replace " ", "" # remove all spaces
+    $targetList = $targetList -split ","       #split list with comma delimiter
+    Write-Output "Proceeding to scan:"
+    Write-Output $targetList
+} 
+else 
+{ 
+    Write-Output "No targets specified with arg. Proceeding with:"
+    $targetList = @(
+    #"192.168.1.1"
     #"192.168.2.2",
     #"192.168.3.3"
-)
+    ) 
+
+    Write-Output $targetList
+    Write-Output ""
+}
 
 # Set of common ports
 $common = @(
@@ -14,8 +34,8 @@ $common = @(
 	102,110,135,137,
 	138,139,143,381,465,
 	383,443,445,464,2869,
-	587,593,636,691,5357,
-	902,989,995,1025,3389,
+	587,593,636,691,5357,5040,
+	902,912,989,995,1025,3389,
 	1194,1337,1433,2179,
 	4022,1434,1589,1725,
 	1900,5353,5780,3702,
@@ -40,8 +60,6 @@ $sample= @(
 
 $allports = 1..65535
 
-#$h = $args[0]
-
 # Store ips and ports
 $ipPortDict = @{}
 
@@ -49,6 +67,7 @@ $suppressClosedPorts = "true"
 
 # global timeout, if longer than 45 seconds to respond, likely filtered
 $global_timeoutSec = New-TimeSpan -Seconds 45
+$global_timeoutSec_int = 45
 
 # global slow response - if responds after 15 seconds likely filtered
 $global_slowtimeout = New-TimeSpan -Seconds 15
@@ -126,13 +145,14 @@ Function http_portscan
     try
     {
         $start = Get-Date
-	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec $global_timeoutSec_
+	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec $global_timeoutSec_int
         #Write-Output $resp
     }
     catch
     {
         $resp = $_.Exception.Message
         #Write-Output $resp
+        
     }
 
     # enable for debugging
@@ -289,34 +309,6 @@ Function wsman_portscan
 #$response = Invoke-RestMethod -Uri "http://127.0.0.1:443" -Method OPTIONS -Headers @{ Authorization = "aaa" }
 
 
-#Write-Output "SMTP Portscan"
-foreach ($port in $common)
-{
-	$t = $target + ":" + $port
-	#Write-Output  $t
-	#smtp_portscan -target $target -port $port
-}
-
-#Write-Output "HTTP Portscan"
-foreach ($port in $common)
-{
-	$t = $target + ":" + $port
-	#Write-Output  $t
-	#http_portscan -target $target -port $port
-}
-
-#Write-Output "WSMAN Portscan"
-foreach ($port in $common)
-{
-	$t = $target + ":" + $port
-	#Write-Output  $t
-	#wsman_portscan -target $target -port $port
-}
-
-
-Write-Output "ppscanner - PowerShell Port Scanner"
-Write-Output "Author: Elysee Franchuk (kva55)"
-Write-Output "github: https://github.com/kva55/ppscanner"
 foreach ($target in $targetList)
 {
     Write-Output ""
@@ -326,8 +318,8 @@ foreach ($target in $targetList)
     {
 
         $c = Get-Random -Minimum 1 -Maximum 4 # random function each time
-	    #$c = 3 # for full wsman scan
-        $c = 2 # for full http scan
+	    $c = 3 # for full wsman scan
+        #$c = 2 # for full http scan
         #$c = 1 # for full smtp scan
         
 	    #Write-Output  $t
@@ -350,5 +342,5 @@ foreach ($target in $targetList)
 }
 
 # Display all found ports and ip pairs
-$ipPortDict.GetEnumerator() | Out-String
+$ipPortDict.GetEnumerator() | Format-Table
 
