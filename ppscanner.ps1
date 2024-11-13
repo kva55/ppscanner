@@ -26,35 +26,37 @@ for ($i = 0; $i -lt $args.Length; $i++)
                 Write-Output "" 
                 
             } 
-        }
-        else 
-        {
-            Write-Output "No port values. Proceeding with common ports."
+        }  
+    }
+}
+
+# if no ports, continue with common port selection
+if($portList -eq $null)
+{
+    Write-Output "No port values. Proceeding with common ports."
             # Set of common ports
             $portList = @(
 	        7,20,21,22,23,
 	        25,53,69,80,88,
 	        102,110,135,137, 
-            	138,139,143,381,465,
-	    	383,443,445,464,2869,  
-            	587,593,636,691,5357,
-            	5040,902,912,989,995,
-            	1025,3389,1194,1337,
-            	1433,2179,4022,1434,
-            	1589,1725,1900,5353,
-            	5780,3702,2083,2483,
-            	2484,2967,3074,3306,
-            	3724,46645432,5900,
-            	6665,6666,6667,6668,
-            	6669,6881,6999,6970,
-            	8080,8081,8082,8087,
-            	8222,9100,10000,12345,
-            	27374,31337,2052,2053,
-            	2082,2083,2086,8443,8880
+            138,139,143,381,465,
+	        383,443,445,464,2869,  
+            587,593,636,691,5357,
+            5040,902,912,989,995,
+            1025,3389,1194,1337,
+            1433,2179,4022,1434,
+            1589,1725,1900,5353,
+            5780,3702,2083,2483,
+            2484,2967,3074,3306,
+            3724,46645432,5900,
+            6665,6666,6667,6668,
+            6669,6881,6999,6970,
+            8080,8081,8082,8087,
+            8222,9100,10000,12345,
+            27374,31337,2052,2053,
+            2082,2083,2086,8443,8880
             )
-            #Write-Output $portList
-        }
-    }
+            Write-Output ""
 }
 
 #get ips
@@ -100,6 +102,18 @@ $suppressClosedPorts = "true"
 $smpt  = "false"
 $http  = "false"
 $wsman = "false"
+
+# global timeout, if longer than 45 seconds to respond, likely filtered
+$global_timeoutSec = New-TimeSpan -Seconds 45
+$global_timeoutSec_int = 45
+
+# global slow response - if responds after 15 seconds likely filtered
+$global_slowtimeout = New-TimeSpan -Seconds 15
+$slow_infer = "true" #turning this off might reduce FPs
+
+# global fast response, if responds within 1 second likely filtered or up
+$global_fastTimeout = New-TimeSpan -Second 1 # If unable to connect faster than other requests - filtered
+$fast_infer = "true"
 
 Write-Output ""
 #get additional args
@@ -150,6 +164,110 @@ for ($i = 0; $i -lt $args.Length; $i++)
         Write-Output "[*] Only scanning with wsman"
     }
 
+    if ($args[$i] -eq "--web-ports" -or $args[$i] -eq "-w")
+    {
+        # common web ports
+        $portList= @(
+	    80,443,21,22,25,110,143,3389,8080,8443,3306,5432,1521,27017,6379,8081,8082,8083,8084,8085
+        )
+        Write-Output "[*] Proceeding with web application ports"
+    }
+
+    # Set timeout
+    if ($args[$i] -eq "--timeout" -or $args[$i] -eq "-to")
+    {
+        
+        
+        Write-Output "[*] Proceeding with $timeoutIndex second timeout"
+    }
+
+    if ($args[$i] -eq "--fast-timeout" -or $args[$i] -eq "-fto") 
+    {
+        $fasttimeoutIndex = $args.IndexOf("--fast-timeout")
+        if ($fasttimeoutIndex -eq -1) 
+        {
+            $fasttimeoutIndex = $args.IndexOf("-fto")
+        }
+    
+        if ($fasttimeoutIndex -ne -1 -and $fasttimeoutIndex + 1 -lt $args.Length) 
+        {
+            $timeoutValue = $args[$fasttimeoutIndex + 1]
+
+            if ($timeoutValue -is [int]) 
+            {
+                $global_fastTimeout = New-TimeSpan -Second $timeoutValue
+                $fast_infer = "true"
+            } 
+            else 
+            {
+                $timeoutValue = 1
+                $global_fastTimeout = New-TimeSpan -Second $timeoutValue
+                $fast_infer = "true"
+            }
+
+        } 
+        else 
+        {
+            $global_fastTimeout = New-TimeSpan -Second 1
+            $fast_infer = "true"
+        }
+    
+       Write-Output "[*] Proceeding with fast timeout inference at $($global_fastTimeout.TotalSeconds) second(s)"
+    }
+
+
+    if ($args[$i] -eq "--slow-timeout" -or $args[$i] -eq "-sto") 
+    {
+        $slowtimeoutIndex = $args.IndexOf("--slow-timeout")
+        if ($slowtimeoutIndex -eq -1) 
+        {
+            $slowtimeoutIndex = $args.IndexOf("-sto")
+        }
+    
+        if ($slowtimeoutIndex -ne -1 -and $slowtimeoutIndex + 1 -lt $args.Length) 
+        {
+            $timeoutValue = $args[$slowtimeoutIndex + 1]
+
+            if ($timeoutValue -is [int]) 
+            {
+                $global_slowTimeout = New-TimeSpan -Second $timeoutValue
+                $slow_infer = "true"
+            } 
+            else 
+            {
+                $timeoutValue = 15
+                $global_slowTimeout = New-TimeSpan -Second $timeoutValue
+                $slow_infer = "true"
+            }
+
+        } 
+        else 
+        {
+            $global_slowTimeout = New-TimeSpan -Second 15
+            $slow_infer = "true"
+        }
+    
+       Write-Output "[*] Proceeding with slow timeout inference at $($global_slowTimeout.TotalSeconds) second(s)"
+    }
+
+    # Set timeout
+    if ($args[$i] -eq "--timeout" -or $args[$i] -eq "-to")
+    {
+        $timeoutIndex = $args.IndexOf("--timeout")
+        if ($timeoutIndex -eq -1) 
+        {
+            $timeoutIndex = $args.IndexOf("-to")
+            if ($timeoutIndex -ne -1 -and $timeoutIndex + 1 -lt $args.Length)
+            {
+                $timeoutIndex = $args[$timeoutIndex + 1]
+                $global_timeoutSec = New-TimeSpan -Seconds $timeoutIndex
+                $global_timeoutSec_int = $timeoutIndex
+            }
+        }
+        
+        Write-Output "[*] Proceeding with $timeoutIndex second timeout"
+    }
+
 }
 
 $sample= @(
@@ -160,17 +278,6 @@ $sample= @(
 # Store ips and ports
 $ipPortDict = @{}
 
-# global timeout, if longer than 45 seconds to respond, likely filtered
-$global_timeoutSec = New-TimeSpan -Seconds 45
-$global_timeoutSec_int = 45
-
-# global slow response - if responds after 15 seconds likely filtered
-$global_slowtimeout = New-TimeSpan -Seconds 15
-$slow_infer = "true" #turning this off might reduce FPs
-
-# global fast response, if responds within 1 second likely filtered or up
-$global_fastTimeout = New-TimeSpan -Second 1 # If unable to connect faster than other requests - filtered
-$fast_infer = "true"
 
 Function smtp_portscan
 {
@@ -241,7 +348,7 @@ Function http_portscan
     {
         $start = Get-Date
 	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec $global_timeoutSec_int
-        #Write-Output $resp
+        Write-Output $resp
     }
     catch
     {
@@ -262,9 +369,20 @@ Function http_portscan
         # Maybe higher FP - responses shorter than avg
         if($resp -like "Unable to connect to the remote server" -and $elapsed1 -lt $global_fastTimeout)
         {
+            #Write-Output $elapsed1
             Write-Output "[HTTP] $t - open|filtered"
             #Write-Output "aaa"
             $ipPortDict[$target] += @($port)
+        }
+        if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive.")
+        {
+            Write-Output "[HTTP] $t - open"
+            $ipPortDict[$target] += @($port)
+        }
+        else
+        {
+            Write-Output "[HTTP] $t - closed"
+            #$ipPortDict[$target] += @($port)
         }
     }
 
@@ -307,7 +425,7 @@ Function http_portscan
     #    Write-Output "[HTTP] $t - open|filtered"
     #    $ipPortDict[$target] += @($port)
     #}
-    if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive."  -and $suppressClosedPorts -eq "false")
+    if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive."  -and $suppressClosedPorts -eq "false" -and $fast_infer -eq "false")
     {
         Write-Output "[HTTP] $t - closed"
         #$ipPortDict[$target] += @($port)
@@ -333,6 +451,11 @@ Function http_portscan
         $ipPortDict[$target] += @($port)
     }
     if($resp -like "The remote server returned an error: (403) Forbidden.")
+    {
+        Write-Output "[HTTP] $t - open"
+        $ipPortDict[$target] += @($port)
+    }
+    if($resp -like "The remote server returned an error: (404) Not Found.")
     {
         Write-Output "[HTTP] $t - open"
         $ipPortDict[$target] += @($port)
