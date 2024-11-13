@@ -3,6 +3,10 @@ basic port scan - uses random protocols
 
 ``./ppscanner.ps1 --target 192.168.0.1 --port 22,23,443``
 
+Multiple ips - use comma delimiter
+
+``./ppscanner.ps1 --target 192.168.0.1,192.168.0.2 --port 22,23,443``
+
 mail only scan
 
 ``./ppscanner.ps1 --target 192.168.0.1 --port 22,23,443 -smtp``
