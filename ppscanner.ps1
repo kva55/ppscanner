@@ -109,11 +109,11 @@ $global_timeoutSec_int = 45
 
 # global slow response - if responds after 15 seconds likely filtered
 $global_slowtimeout = New-TimeSpan -Seconds 15
-$slow_infer = "true" #turning this off might reduce FPs
+$slow_infer = "false" #turning this off might reduce FPs
 
 # global fast response, if responds within 1 second likely filtered or up
 $global_fastTimeout = New-TimeSpan -Second 1 # If unable to connect faster than other requests - filtered
-$fast_infer = "true"
+$fast_infer = "false"
 
 Write-Output ""
 #get additional args
@@ -348,7 +348,7 @@ Function http_portscan
     {
         $start = Get-Date
 	    $resp = Invoke-WebRequest -Uri $t -TimeoutSec $global_timeoutSec_int
-        Write-Output $resp
+        #Write-Output $resp
     }
     catch
     {
@@ -374,16 +374,17 @@ Function http_portscan
             #Write-Output "aaa"
             $ipPortDict[$target] += @($port)
         }
-        if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive.")
+        if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive." -and $elapsed1 -lt $global_fastTimeout)
         {
             Write-Output "[HTTP] $t - open"
             $ipPortDict[$target] += @($port)
         }
-        else
+        elseif($resp -like "The underlying connection was closed: An unexpected error occurred on a receive." -and $elapsed1 -gt $global_fastTimeout)
         {
             Write-Output "[HTTP] $t - closed"
             #$ipPortDict[$target] += @($port)
         }
+        
     }
 
     if($slow_infer -eq "true")
@@ -394,6 +395,13 @@ Function http_portscan
              Write-Output "[HTTP] $t - open|filtered"
             $ipPortDict[$target] += @($port)
         }
+
+        if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive." -and $elapsed1 -gt $global_slowtimeout)
+        {
+             Write-Output "[HTTP] $t - open|filtered"
+            $ipPortDict[$target] += @($port)
+        }
+
     }
 
     if($resp.StatusCode)
@@ -425,7 +433,7 @@ Function http_portscan
     #    Write-Output "[HTTP] $t - open|filtered"
     #    $ipPortDict[$target] += @($port)
     #}
-    if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive."  -and $suppressClosedPorts -eq "false" -and $fast_infer -eq "false")
+    if($resp -like "The underlying connection was closed: An unexpected error occurred on a receive."  -and $suppressClosedPorts -eq "false" -and $fast_infer -eq "false" -and $slow_infer -eq "false")
     {
         Write-Output "[HTTP] $t - closed"
         #$ipPortDict[$target] += @($port)
