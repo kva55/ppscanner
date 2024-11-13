@@ -19,9 +19,13 @@ wsman only scan
 
 ``./ppscanner.ps1 --target 192.168.0.1 --port 22,23,443 -wsman``
 
-Cloudflare ports check
+Cloudflare ports check (Use a mix for http:// and https:// for http-based scans)
 
 ``./ppscanner.ps1 --target 192.168.0.1 --cloudflare-check``
+
+``./ppscanner.ps1 --target https://192.168.0.1 --cloudflare-check``
+
+``./ppscanner.ps1 --target http://192.168.0.1 --cloudflare-check``
 
 Show closed ports
 
