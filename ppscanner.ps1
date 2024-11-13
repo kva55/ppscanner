@@ -320,11 +320,11 @@ Function smtp_portscan
         Write-Output "[MAIL] $t - Open|filtered"
         $ipPortDict[$target] += @($port)
     }
-    if($resp -like "Unable to read data from the transport connection: An existing connection was forcibly closed by the remote host." -and $suppressClosedPorts -eq "false")
-    {
-        Write-Output "[MAIL] $t - closed"
-        #$ipPortDict[$target] += @($port)
-    }
+    #if($resp -like "Unable to read data from the transport connection: An existing connection was forcibly closed by the remote host." -and $suppressClosedPorts -eq "false")
+    #{
+    #    Write-Output "[MAIL] $t - closed"
+    #    #$ipPortDict[$target] += @($port)
+    #}
     if($resp -like "Unable to read data from the transport connection: net_io_connectionclosed.")
     {
         Write-Output "[MAIL] $t - open"
