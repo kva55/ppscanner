@@ -7,6 +7,11 @@ Multiple ips - use comma delimiter
 
 ``./ppscanner.ps1 --target 192.168.0.1,192.168.0.2 --port 22,23,443``
 
+Using time-based inference
+- Can specify time for quick and slow responses (default fast-timeout=1 second, slow-timeout=15)
+
+``./ppscanner.ps1 --target 192.168.0.1,192.168.0.2 --port 22,23,443 --fast-timeout 5 --slow-timeout 30``
+
 mail only scan
 
 ``./ppscanner.ps1 --target 192.168.0.1 --port 22,23,443 -smtp``
