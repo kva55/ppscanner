@@ -48,7 +48,7 @@ if($portList -eq $null)
             1589,1725,1900,5353,
             5780,3702,2083,2483,
             2484,2967,3074,3306,
-            3724,46645432,5900,
+            3724,4664,5432,5900,
             6665,6666,6667,6668,
             6669,6881,6999,6970,
             8080,8081,8082,8087,
@@ -326,6 +326,11 @@ Function smtp_portscan
         #$ipPortDict[$target] += @($port)
     }
     if($resp -like "Unable to read data from the transport connection: net_io_connectionclosed.")
+    {
+        Write-Output "[MAIL] $t - open"
+        $ipPortDict[$target] += @($port)
+    }
+    if($resp -like "Unable to read data from the transport connection: An existing connection was forcibly closed by the remote host.")
     {
         Write-Output "[MAIL] $t - open"
         $ipPortDict[$target] += @($port)
